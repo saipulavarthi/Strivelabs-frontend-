@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Country Explorer</title>
+  <link rel="stylesheet" href="./Styling/style.css">
+</head>
+
+<body>
+  <div class="countryContainer">
+    <header>
+      
+ 
+      
+      <button id="heart-button" class="heart-btn" title="Favorites">
+        ❤️ <span id="favorites-counter" class="favorites-counter">0</span>
+      </button>
+
+ <!-- Floating Message Container (Corrected) -->
+ <div id="message-container" class="message" style="display: none;">
+  <div class="message-content">
+    <p id="message-text"></p>
+    <button id="close-message" class="close-btn" onclick="closeMessage()">×</button>
+  </div>
+</div>
+      
+<!--new-->
+      <div id="favorites-overlay" class="favorites-overlay">
+          <div class="favorites-content">
+              <button id="favorites-close" class="favorites-close">&times;</button>
+              <h2>My Favorites</h2>
+              <ul id="favorites-list" class="favorites-list">
+                  <!-- Favorites will be dynamically added here -->
+              </ul>
+              <p id="no-favorites" style="display: none;">No favorites yet!</p>
+              <p id="storage-error" style="color: red; display: none;">
+                  Storage unavailable. Favorites cannot be saved.
+              </p>
+          </div>
+      </div>
+      
+      <div class="search-container">
+        <!-- Search bar and dropdown for suggestions -->
+        <input type="text" id="search-bar" placeholder="Search countries..." autocomplete="off" />
+        <ul id="search-dropdown" style="display: none;"></ul>
+      </div>
+<!-- Region Filter -->
+<div class="filter-container">
+  <span>Region</span>
+  <div id="region-filter" class="custom-dropdown">
+    <div class="custom-dropdown-btn">All Regions</div>
+    <ul class="custom-dropdown-list">
+      <li data-value="">All Regions</li>
+      <li data-value="Africa">Africa</li>
+      <li data-value="Americas">Americas</li>
+      <li data-value="Asia">Asia</li>
+      <li data-value="Europe">Europe</li>
+      <li data-value="Oceania">Oceania</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Language Filter -->
+<div class="filter-container">
+  <span>Language</span>
+  <div id="language-filter" class="custom-dropdown">
+    <div class="custom-dropdown-btn">All Languages</div>
+    <ul class="custom-dropdown-list">
+      
+      <li data-value="">All Languages</li>
+      <li data-value="en">English</li>
+      <li data-value="es">Spanish</li>
+      <li data-value="fr">French</li>
+    </ul>
+  </div>
+</div>
+
+    </header>
+
+    <main>
+      <!-- Countries Container -->
+      <section id="countries-container"></section>
+
+      <!-- Load More Button Container -->
+      <div id="load-more-container">
+        <button id="load-more">Load More</button>
+        
+      </div>
+
+   
+
+      <!-- Message Container (Pop-up for messages) -->
+      <div id="message-container" class="message" style="display: none;">
+        <div class="message-content">
+          <p id="message-text"></p>
+          <button id="close-message" class="close-btn">×</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="./js/application.js"></script>
+  <script type="module" src="./js/userinterface.js"></script>
+</body>
+
+</html>
