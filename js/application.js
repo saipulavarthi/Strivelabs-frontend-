@@ -1,10 +1,9 @@
 import { fetchAllCountries, searchCountries, fetchCountryDetails } from "./api.js";
-import { renderCountries, renderFavorites } from "./userinterface.js";
+import favoritesManager, { renderCountries } from "./favorites.js";
 
 let countries = [];
 let displayedCount = 0;
 export let currentSearchResults = [];
-export let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
 
 // Add event listeners
 document.getElementById("search-bar").addEventListener("input", handleSearch);
@@ -17,7 +16,6 @@ document.getElementById("countries-container").addEventListener("click", handleC
 function saveState() {
   localStorage.setItem("displayedCount", displayedCount);
   localStorage.setItem("currentSearchResults", JSON.stringify(currentSearchResults));
-  localStorage.setItem("favorites", JSON.stringify(favorites));
 }
 
 // Restore the state from localStorage
@@ -32,11 +30,12 @@ function init() {
     .then((data) => {
       countries = data;
       restoreState();
+      const favorites = favoritesManager.getFavorites();
       renderCountries(currentSearchResults, favorites);
-      renderFavorites(favorites);
     })
     .catch((error) => {
       console.error("Error initializing:", error);
+      favoritesManager.showMessage("Error loading countries", "error");
     });
 }
 
@@ -45,6 +44,10 @@ function handleSearch(event) {
   const query = event.target.value.trim();
   const dropdown = document.getElementById("search-dropdown");
 
+   // Get current filter values
+   const region = document.getElementById("region-filter").dataset.value || "";
+   const language = document.getElementById("language-filter").dataset.value || "";
+ 
   if (!query) {
     dropdown.style.display = "none";
     return;
@@ -52,17 +55,43 @@ function handleSearch(event) {
 
   searchCountries(query)
     .then((results) => {
-      const suggestions = results.slice(0, 5);
-      dropdown.innerHTML = suggestions
-        .map(
-          (country) =>
-            `<li class="dropdown-item" data-name="${country.name.common}">${country.name.common}</li>`
-        )
-        .join("");
-      dropdown.innerHTML += `<li class="dropdown-item view-all" data-query="${query}">View All</li>`;
+      // Apply region and language filters
+      let filteredResults = results;
+
+      if (region) {
+        filteredResults = filteredResults.filter(
+          (country) => country.region.toLowerCase() === region.toLowerCase()
+        );
+      }
+
+      if (language) {
+        filteredResults = filteredResults.filter((country) =>
+          Object.values(country.languages || {}).some((lang) =>
+            lang.toLowerCase().includes(language.toLowerCase())
+          )
+        );
+      }
+
+      if (filteredResults.length === 0) {
+        // No results matching the current filters
+        dropdown.innerHTML = `<li class="dropdown-item no-results">No results in this filter</li>`;
+      } else {
+        const suggestions = filteredResults.slice(0, 5);
+        dropdown.innerHTML = suggestions
+          .map(
+            (country) =>
+              `<li class="dropdown-item" data-name="${country.name.common}">${country.name.common}</li>`
+          )
+          .join("");
+        dropdown.innerHTML += `<li class="dropdown-item view-all" data-query="${query}">View All</li>`;
+      }
+
       dropdown.style.display = "block";
     })
-    .catch((error) => console.error("Error in search:", error));
+    .catch((error) => {
+      console.error("Error in search:", error);
+      favoritesManager.showMessage("Error searching countries", "error");
+    });
 }
 
 // Handle search dropdown click
@@ -79,19 +108,15 @@ document.getElementById("search-dropdown").addEventListener("click", (event) => 
       searchCountries(query)
         .then((results) => {
           currentSearchResults = results;
+          const favorites = favoritesManager.getFavorites();
           renderCountries(currentSearchResults, favorites);
           document.getElementById("search-dropdown").style.display = "none";
         })
-        .catch((error) => console.error("Error viewing all results:", error));
+        .catch((error) => {
+          console.error("Error viewing all results:", error);
+          favoritesManager.showMessage("Error loading results", "error");
+        });
     }
-  }
-});
-
-// Close dropdown when clicking outside
-document.addEventListener("click", (event) => {
-  const dropdown = document.getElementById("search-dropdown");
-  if (!dropdown.contains(event.target) && event.target.id !== "search-bar") {
-    dropdown.style.display = "none";
   }
 });
 
@@ -100,14 +125,12 @@ function handleFilter() {
   const language = document.querySelector('#language-filter').dataset.value || '';
   const query = document.getElementById('search-bar').value.trim().toLowerCase();
 
-  let filtered = [...countries]; // Use a fresh copy of countries
+  let filtered = [...countries];
 
-  // Filter by region
   if (region) {
     filtered = filtered.filter((country) => country.region === region);
   }
 
-  // Filter by language
   if (language) {
     filtered = filtered.filter((country) =>
       Object.values(country.languages || {}).some((lang) =>
@@ -116,24 +139,42 @@ function handleFilter() {
     );
   }
 
-  // Filter by search query
   if (query) {
     filtered = filtered.filter((country) =>
       country.name.common.toLowerCase().includes(query)
     );
   }
 
-  // Update search results and render
   currentSearchResults = filtered.slice(0, displayedCount);
+  const favorites = favoritesManager.getFavorites();
   renderCountries(currentSearchResults, favorites);
+
+  const loadMoreButton = document.getElementById('load-more');
+  if (filtered.length === 0) {
+    favoritesManager.showMessage("No countries match your filters");
+    loadMoreButton.style.display = 'none';
+  } else if (displayedCount >= filtered.length) {
+    favoritesManager.showMessage("No more countries available to load");
+    loadMoreButton.style.display = 'none';
+  } else {
+    loadMoreButton.style.display = 'block';
+  }
   saveState();
 }
 
 // Load more countries
+const loadIncrement = 10;
 function loadMore() {
-  displayedCount += 10;
+  displayedCount += loadIncrement;
   currentSearchResults = countries.slice(0, displayedCount);
+  const favorites = favoritesManager.getFavorites();
   renderCountries(currentSearchResults, favorites);
+
+  const loadMoreButton = document.getElementById("load-more");
+  if (displayedCount >= countries.length) {
+    loadMoreButton.style.display = "none";
+    favoritesManager.showMessage("No more countries available to load");
+  }
   saveState();
 }
 
@@ -143,63 +184,25 @@ function handleCountryClick(event) {
 
   if (target.classList.contains("favorite-btn")) {
     const countryName = target.dataset.name;
-    toggleFavorite(countryName);
+    const isFavorite = favoritesManager.getFavorites().includes(countryName);
     
-    // Change heart icon based on favorite status
-    target.textContent = favorites.includes(countryName) ? "❤️" : "🤍";
+    if (isFavorite) {
+      favoritesManager.removeFavorite(countryName);
+    } else {
+      favoritesManager.addFavorite(countryName);
+    }
     
-    // Show popup message
-    const messageText = favorites.includes(countryName)
-      ? `${countryName} added to favorites!`
-      : `${countryName} removed from favorites!`;
-
-    showMessage(messageText);  // Display the message
-    
-    renderFavorites(favorites);
+    // Re-render countries to update favorite buttons
+    renderCountries(currentSearchResults, favoritesManager.getFavorites());
   } else {
     const card = target.closest(".country-card");
     if (card) {
       const countryName = card.dataset.name;
-      saveState(); // Save any necessary state before navigating
+      saveState();
       const detailsUrl = `details.html?name=${encodeURIComponent(countryName)}`;
-      window.location.href = detailsUrl; // Navigate to details page in the same tab
+      window.location.href = detailsUrl;
     }
   }
-}
-
-// Show floating message
-function showMessage(message) {
-  const messageContainer = document.getElementById('message-container');
-  const messageText = document.getElementById('message-text');
-  
-  messageText.textContent = message;
-  messageContainer.classList.add('show');
-  
-  // Hide the message after 3 seconds
-  setTimeout(() => {
-    messageContainer.classList.remove('show');
-  }, 3000);
-}
-
-// Close message manually
-function closeMessage() {
-  const messageContainer = document.getElementById('message-container');
-  messageContainer.classList.remove('show');
-}
-
-
-// Toggle favorite country
-function toggleFavorite(countryName) {
-  const index = favorites.indexOf(countryName);
-  if (index > -1) {
-    favorites.splice(index, 1);
-  } else if (favorites.length < 5) {
-    favorites.push(countryName);
-  } else {
-    alert("You can only add up to 5 favorites!");
-    return;
-  }
-  saveState();
 }
 
 // Region dropdown toggle
@@ -218,9 +221,9 @@ document.querySelectorAll('#region-filter .custom-dropdown-list li').forEach((it
     const regionDropdown = document.getElementById('region-filter');
     const selectedRegion = event.target.getAttribute('data-value');
     regionDropdown.querySelector('.custom-dropdown-btn').textContent = event.target.textContent;
-    regionDropdown.dataset.value = selectedRegion; // Store selected value
+    regionDropdown.dataset.value = selectedRegion;
     document.querySelector('#region-filter .custom-dropdown-list').classList.remove('open');
-    handleFilter(); // Apply filter
+    handleFilter();
   });
 });
 
@@ -230,12 +233,11 @@ document.querySelectorAll('#language-filter .custom-dropdown-list li').forEach((
     const languageDropdown = document.getElementById('language-filter');
     const selectedLanguage = event.target.getAttribute('data-value');
     languageDropdown.querySelector('.custom-dropdown-btn').textContent = event.target.textContent;
-    languageDropdown.dataset.value = selectedLanguage; // Store selected value
+    languageDropdown.dataset.value = selectedLanguage;
     document.querySelector('#language-filter .custom-dropdown-list').classList.remove('open');
-    handleFilter(); // Apply filter
+    handleFilter();
   });
 });
 
 // Initialize on DOM content loaded
 document.addEventListener("DOMContentLoaded", init);
-console.log("Current favorites:", JSON.parse(localStorage.getItem("favorites")));

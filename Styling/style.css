@@ -1,4 +1,4 @@
-/* General Reset */
+fav/* General Reset */
 * {
   margin: 0;
   padding: 0;
@@ -83,6 +83,8 @@ header h1 {
 .filter-container {
   margin: 20px 0;
   display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
   align-items: center;
   justify-content: center;
 }
@@ -95,7 +97,7 @@ header h1 {
 .custom-dropdown {
   position: relative;
   display: inline-block;
-  width: 200px;
+  min-width: 200px;
 }
 
 .custom-dropdown-btn {
@@ -167,6 +169,8 @@ button {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
+  justify-content: center;
+  align-items: center;
 }
 
 .country-card {
@@ -177,6 +181,8 @@ button {
   text-align: center;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
+  max-width: 300px;
+  margin: 0 auto;
 }
 
 .country-card:hover {
@@ -214,33 +220,36 @@ button {
   font-weight: bold;
   padding: 2px 5px;
   border-radius: 50%;
-  display: none; /* Hidden when the count is 0 */
+  display: inline-block; /* Hidden when the count is 0 */
+}
+.favorites-counter.hidden{
+  display: none;
 }
 
-/* Overlay Styles */
-.favorites-overlay {
-  display: none;
+#favorites-panel {
   position: fixed;
   top: 0;
-  left: 0;
-  width: 100%;
+  right: 0;
+  width: 300px;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
+  background: #ffffff;
+  border-left: 1px solid #ced4da;
+  box-shadow: -2px 0 6px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  justify-content: center;
-  align-items: center;
+  overflow-y: auto;
+  display: none; /* Initially hidden */
+  padding: 20px;
 }
 
-.favorites-content {
-  background-color: white;
-  border-radius: 10px;
-  padding: 20px;
-  max-width: 400px;
-  width: 90%;
-  text-align: center;
-  position: relative;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+#favorites-panel.show {
+  display: block;
 }
+
+#favorites-panel h2 {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
 
 .favorites-close {
   position: absolute;
@@ -275,7 +284,7 @@ button {
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 576px) {
   #search-bar {
     width: 90%;
   }
@@ -285,7 +294,8 @@ button {
   }
 
   #countries-container {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap : 10px;
   }
 
   .custom-dropdown-btn {
@@ -306,12 +316,16 @@ button {
   z-index: 1000;
   display: none;
   opacity: 0;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.5s ease,visibility 0.5s ease;
 }
 
 #message-container.show {
-  display: block;
+  visibility: visible;
   opacity: 1;
+}
+#message-container.hide {
+  visibility: hidden;
+  opacity: 0;
 }
 
 .message-content {

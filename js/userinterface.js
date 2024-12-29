@@ -1,220 +1,176 @@
-import { currentSearchResults, favorites } from "./application.js";
+import { currentSearchResults } from "./application.js";
 
-// Render the list of countries
-export function renderCountries(countries, favorites) {
-  const container = document.getElementById("countries-container");
-
-  // Clear the container first
-  container.innerHTML = "";
-
-  // Add each country's card to the container
-  countries.forEach((country) => {
-    const countryCard = createCountryCard(country, favorites);
-    container.innerHTML += countryCard;
-  });
-}
-
-// Create a single country card
-function createCountryCard(country, favorites) {
-  const isFavorite = favorites.includes(country.name.common);
-  const favoriteIcon = isFavorite ? "❤️" : "🤍";
-
-  return `
-    <div class="country-card" data-name="${country.name.common}">
-      <div class="country-image">
-        <img src="${country.flags.png}" alt="Flag of ${country.name.common}" />
-      </div>
-      <h2>${country.name.common}</h2>
-      <button class="favorite-btn" data-name="${country.name.common}">
-        ${favoriteIcon}
-      </button>
-    </div>
-  `;
-}
-
-// Add event listener for the Favorites button
-document.getElementById("heart-button").addEventListener("click", () => {
-  const favorites = JSON.parse(localStorage.getItem("favorites")) || [];
-  const container = document.getElementById("favorites-container");
-
-  // Toggle visibility of the favorites container
-  if (container.style.display === "block") {
-    container.style.display = "none"; // Hide the container if it's already visible
-  } else {
-    if (favorites.length === 0) {
-      container.innerHTML = "<p>No favorite countries to display.</p>";
-    } else {
-      renderFavorites(favorites);
-    }
-    container.style.display = "block"; // Show the container
-  }
-
-  // Optionally clear the main countries container or leave as is
-  document.getElementById("countries-container").innerHTML = ""; // Clear the main container
-});
-
-// Render the list of favorite countries
-export function renderFavorites(favorites) {
-  const container = document.getElementById("favorites-container");
-
-  // Show the container if favorites exist
-  container.style.display = "block";
-  container.innerHTML = ""; // Clear previous content
-
-  favorites.forEach((countryName) => {
-    const favoriteCard = createFavoriteCard(countryName);
-    container.innerHTML += favoriteCard;
-  });
-
-  // Add click event listeners to "Remove" buttons
-  const removeButtons = container.querySelectorAll(".remove-favorite-btn");
-  removeButtons.forEach((button) => {
-    button.addEventListener("click", (event) => {
-      const countryName = event.target.dataset.name;
-      removeFavorite(countryName);
-    });
-  });
-}
-
-// Create a single favorite country card
-function createFavoriteCard(countryName) {
-  return `
-    <div class="favorite-country">
-      <h3>${countryName}</h3>
-      <button class="remove-favorite-btn" data-name="${countryName}">
-        Remove
-      </button>
-    </div>
-  `;
-}
-
-// Remove a country from favorites
-function removeFavorite(countryName) {
-  const index = favorites.indexOf(countryName);
-  if (index > -1) {
-    favorites.splice(index, 1); // Remove the country from the list
-  }
-
-  // Update localStorage and re-render the favorites
-  localStorage.setItem("favorites", JSON.stringify(favorites));
-  renderFavorites(favorites);
-
-  // Optionally re-render all countries to update favorite buttons
-  renderCountries(currentSearchResults, favorites);
-}
-
-
-
-class FavoritesManager {
+// FavoritesManager class to handle all favorites-related functionality
+export class FavoritesManager {
   constructor() {
-      this.heartButton = document.getElementById('heart-button');
-      this.overlay = document.getElementById('favorites-overlay');
-      this.closeButton = document.getElementById('favorites-close');
-      this.favoritesList = document.getElementById('favorites-list');
-      this.noFavoritesMessage = document.getElementById('no-favorites');
-      this.counter = this.heartButton.querySelector('.favorites-counter'); // Get the counter
+    this.heartButton = document.getElementById('heart-button');
+    this.favoritesPanel = document.getElementById('favorites-panel');
+    this.favoritesList = document.getElementById('favorites-list');
+    this.noFavoritesMessage = document.getElementById('no-favorites');
+    this.storageError = document.getElementById('storage-error');
+    this.counter = document.getElementById('favorites-counter');
+    
+    this.initEventListeners();
+    this.renderFavorites();
+    this.updateFavoritesCounter();
+  }
 
-      this.initEventListeners();
-      this.renderFavorites();
-      this.updateFavoritesCounter(); // Update the counter initially
-  }
-  
   initEventListeners() {
-      // Open overlay
-      this.heartButton.addEventListener('click', () => {
-          this.renderFavorites();
-          this.overlay.style.display = 'flex';
-      });
-      
-      // Close overlay
-      this.closeButton.addEventListener('click', () => {
-          this.overlay.style.display = 'none';
-      });
-      
-      // Close overlay when clicking outside
-      this.overlay.addEventListener('click', (event) => {
-          if (event.target === this.overlay) {
-              this.overlay.style.display = 'none';
-          }
-      });
+    // Toggle favorites panel
+    this.heartButton.addEventListener('click', () => {
+      this.favoritesPanel.classList.toggle('show');
+      this.renderFavorites();
+    });
+
+    // Close panel when clicking outside
+    document.addEventListener('click', (event) => {
+      if (!this.favoritesPanel.contains(event.target) && 
+          event.target !== this.heartButton) {
+        this.favoritesPanel.classList.remove('show');
+      }
+    });
+
+    // Handle storage events
+    window.addEventListener('storage', () => {
+      this.renderFavorites();
+      this.updateFavoritesCounter();
+    });
   }
-  
+
   renderFavorites() {
-      // Get favorites from localStorage
-      const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-      console.log("Current favorites:", favorites);
-      
-      // Clear existing list
+    try {
+      const favorites = this.getFavorites();
       this.favoritesList.innerHTML = '';
       
-      // Populate favorites
-      favorites.forEach(item => {
-          const li = document.createElement('li');
-          
-          const span = document.createElement('span');
-          span.textContent = item;
-          
-          li.appendChild(span);
-          this.favoritesList.appendChild(li);
+      if (favorites.length === 0) {
+        this.noFavoritesMessage.style.display = 'block';
+        return;
+      }
+
+      this.noFavoritesMessage.style.display = 'none';
+      
+      favorites.forEach(countryName => {
+        const li = document.createElement('li');
+        li.className = 'favorite-item';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = countryName;
+        
+        const removeButton = document.createElement('button');
+        removeButton.className = 'remove-favorite';
+        removeButton.textContent = '×';
+        removeButton.addEventListener('click', () => this.removeFavorite(countryName));
+        
+        li.appendChild(nameSpan);
+        li.appendChild(removeButton);
+        this.favoritesList.appendChild(li);
       });
-      
-      // Toggle no favorites message
-      this.noFavoritesMessage.style.display = 
-          favorites.length === 0 ? 'block' : 'none';
-      
-      // Update the counter after rendering favorites
-      this.updateFavoritesCounter();
+
+      this.storageError.style.display = 'none';
+    } catch (error) {
+      this.storageError.style.display = 'block';
+      console.error('Error rendering favorites:', error);
+    }
   }
 
   updateFavoritesCounter() {
-      // Get favorites from localStorage
-      const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-      
-      // Update the count on the heart button's badge
-      const favoriteCount = favorites.length;
+    const favorites = this.getFavorites();
+    this.counter.textContent = favorites.length;
+    this.counter.style.display = favorites.length > 0 ? 'inline-block' : 'none';
+  }
 
-      // Show the counter if there are favorites, otherwise hide it
-      if (favoriteCount > 0) {
-          this.counter.style.display = 'inline-block';
-          this.counter.textContent = favoriteCount;
-      } else {
-          this.counter.style.display = 'none';
-      }
+  getFavorites() {
+    try {
+      return JSON.parse(localStorage.getItem('favorites')) || [];
+    } catch (error) {
+      console.error('Error getting favorites:', error);
+      return [];
+    }
   }
 
   addFavorite(countryName) {
-      // Get favorites from localStorage
-      const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-      
-      // Check if the country is already in favorites
+    try {
+      const favorites = this.getFavorites();
       if (!favorites.includes(countryName)) {
-          favorites.push(countryName);
-          localStorage.setItem('favorites', JSON.stringify(favorites));
+        favorites.push(countryName);
+        localStorage.setItem('favorites', JSON.stringify(favorites));
+        this.showMessage(`${countryName} added to favorites!`);
+        this.renderFavorites();
+        this.updateFavoritesCounter();
       }
-      
-      // Re-render the favorites and update the counter
-      this.renderFavorites();
+    } catch (error) {
+      this.showMessage('Error adding to favorites', 'error');
+      console.error('Error adding favorite:', error);
+    }
   }
 
   removeFavorite(countryName) {
-      // Get favorites from localStorage
-      const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-      
-      // Remove the country from favorites
+    try {
+      const favorites = this.getFavorites();
       const index = favorites.indexOf(countryName);
       if (index !== -1) {
-          favorites.splice(index, 1);
-          localStorage.setItem('favorites', JSON.stringify(favorites));
+        favorites.splice(index, 1);
+        localStorage.setItem('favorites', JSON.stringify(favorites));
+        this.showMessage(`${countryName} removed from favorites`);
+        this.renderFavorites();
+        this.updateFavoritesCounter();
+        
+        // Update country cards if they're currently displayed
+        if (typeof renderCountries === 'function' && currentSearchResults) {
+          renderCountries(currentSearchResults, favorites);
+        }
       }
-      
-      // Re-render the favorites and update the counter
-      this.renderFavorites();
+    } catch (error) {
+      this.showMessage('Error removing from favorites', 'error');
+      console.error('Error removing favorite:', error);
+    }
+  }
+
+  showMessage(text, type = 'info') {
+    const messageContainer = document.getElementById('message-container');
+    const messageText = document.getElementById('message-text');
+    
+    messageText.textContent = text;
+    messageContainer.className = `message ${type}`;
+    messageContainer.style.display = 'block';
+
+    setTimeout(() => {
+      messageContainer.style.display = 'none';
+    }, 3000);
   }
 }
 
-// Initialize Favorites Manager
-const favoritesManager = new FavoritesManager();
+// Export function to create country cards
+export function renderCountries(countries, favorites) {
+  const container = document.getElementById('countries-container');
+  container.innerHTML = '';
 
-// Example usage of adding/removing a favorite
-// favoritesManager.addFavorite("Canada"); // Add a favorite
-// favoritesManager.removeFavorite("Canada"); // Remove a favorite
+  countries.forEach(country => {
+    const card = createCountryCard(country, favorites);
+    container.appendChild(card);
+  });
+}
+
+function createCountryCard(country, favorites) {
+  const isFavorite = favorites.includes(country.name.common);
+  
+  const card = document.createElement('div');
+  card.className = 'country-card';
+  card.dataset.name = country.name.common;
+
+  card.innerHTML = `
+    <div class="country-image">
+      <img src="${country.flags.png}" alt="Flag of ${country.name.common}" />
+    </div>
+    <h2>${country.name.common}</h2>
+    <button class="favorite-btn ${isFavorite ? 'active' : ''}" data-name="${country.name.common}">
+      ${isFavorite ? '❤️' : '🤍'}
+    </button>
+  `;
+
+  return card;
+}
+
+// Initialize favorites manager
+const favoritesManager = new FavoritesManager();
+export default favoritesManager;

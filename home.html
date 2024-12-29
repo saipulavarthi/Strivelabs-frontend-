@@ -11,9 +11,6 @@
 <body>
   <div class="countryContainer">
     <header>
-      
- 
-      
       <button id="heart-button" class="heart-btn" title="Favorites">
         ❤️ <span id="favorites-counter" class="favorites-counter">0</span>
       </button>
@@ -25,21 +22,6 @@
     <button id="close-message" class="close-btn" onclick="closeMessage()">×</button>
   </div>
 </div>
-      
-<!--new-->
-      <div id="favorites-overlay" class="favorites-overlay">
-          <div class="favorites-content">
-              <button id="favorites-close" class="favorites-close">&times;</button>
-              <h2>My Favorites</h2>
-              <ul id="favorites-list" class="favorites-list">
-                  <!-- Favorites will be dynamically added here -->
-              </ul>
-              <p id="no-favorites" style="display: none;">No favorites yet!</p>
-              <p id="storage-error" style="color: red; display: none;">
-                  Storage unavailable. Favorites cannot be saved.
-              </p>
-          </div>
-      </div>
       
       <div class="search-container">
         <!-- Search bar and dropdown for suggestions -->
@@ -88,6 +70,20 @@
         <button id="load-more">Load More</button>
         
       </div>
+<!-- Favorites Panel -->
+  <div id="favorites-panel" class="favorites-panel">
+    <div class="favorites-content">
+      <h2>My Favorites</h2>
+      <ul id="favorites-list" class="favorites-list">
+        <!-- Favorites dynamically added here -->
+      </ul>
+      <p id="no-favorites" style="display: none;">No favorites yet!</p>
+      <p id="storage-error" style="color: red; display: none;">
+        Storage unavailable. Favorites cannot be saved.
+      </p>
+    </div>
+  </div>
+
 
    
 
@@ -103,6 +99,16 @@
 
   <script type="module" src="./js/application.js"></script>
   <script type="module" src="./js/userinterface.js"></script>
+<script type="module">
+    // Toggle Favorites Panel
+    const heartButton = document.getElementById("heart-button");
+    const favoritesPanel = document.getElementById("favorites-panel");
+
+    heartButton.addEventListener("click", () => {
+      favoritesPanel.classList.toggle("show");
+    });
+  </script>
+
 </body>
 
 </html>

@@ -35,7 +35,7 @@ export function searchCountries(query) {
 }
 
 export function fetchCountryDetails(countryName) {
-  return fetch(`${API_URL}/name/${countryName}`)
+  return fetch(`${API_URL}/name/${countryName}?fullText=true`)
     .then((response) => {
       if (!response.ok) {
         throw new Error("Failed to fetch country details");
